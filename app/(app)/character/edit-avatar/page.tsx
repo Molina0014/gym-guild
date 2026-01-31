@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useCharacter } from "@/hooks/use-character";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+/* eslint-disable @next/next/no-img-element */
 import { Button } from "@/components/ui/button";
 import { AvatarGenerator } from "@/components/avatar/avatar-generator";
 import { AvatarUploader } from "@/components/avatar/avatar-uploader";
@@ -105,46 +106,67 @@ export default function EditAvatarPage() {
         }
     };
 
-    const handleAvatarUploaded = async (avatarUrl: string) => {
-        if (character) {
-            // Save to history
-            await supabase.from("avatar_history").insert({
-                user_id: userId,
-                file_name: `${userId}/${Date.now()}`,
-                avatar_url: avatarUrl,
-                style: "upload",
-                is_active: true,
-            });
+    const handleImageSelected = async (file: File) => {
+        if (!character || !userId) return;
 
-            // Deactivate previous
-            await supabase
-                .from("avatar_history")
-                .update({ is_active: false })
-                .eq("user_id", userId)
-                .neq("avatar_url", avatarUrl);
+        // Upload to Supabase Storage
+        const timestamp = Date.now();
+        const fileName = `${userId}/${timestamp}`;
+        const fileExt = file.name.split(".").pop();
+        const filePath = `${fileName}.${fileExt}`;
 
-            // Update character
-            await supabase
-                .from("characters")
-                .update({
-                    avatar_url: avatarUrl,
-                    avatar_style: "upload",
-                })
-                .eq("id", character.id);
+        const { error: uploadError } = await supabase.storage
+            .from("avatars")
+            .upload(filePath, file);
 
-            // Refresh history
-            const { data } = await supabase
-                .from("avatar_history")
-                .select("*")
-                .eq("user_id", userId)
-                .order("created_at", { ascending: false });
-
-            if (data) {
-                setAvatarHistory(data);
-            }
-
-            refreshCharacter();
+        if (uploadError) {
+            console.error("Upload error:", uploadError);
+            return;
         }
+
+        // Get public URL
+        const {
+            data: { publicUrl },
+        } = supabase.storage.from("avatars").getPublicUrl(filePath);
+
+        // Deactivate previous avatars
+        await supabase
+            .from("avatar_history")
+            .update({ is_active: false })
+            .eq("user_id", userId)
+            .eq("is_active", true);
+
+        // Save to history
+        await supabase.from("avatar_history").insert({
+            user_id: userId,
+            file_name: fileName,
+            avatar_url: publicUrl,
+            style: "upload",
+            is_active: true,
+        });
+
+        // Update character
+        await supabase
+            .from("characters")
+            .update({
+                avatar_url: publicUrl,
+                avatar_style: "upload",
+            })
+            .eq("id", character.id);
+
+        // Refresh history
+        const { data } = await supabase
+            .from("avatar_history")
+            .select("*")
+            .eq("user_id", userId)
+            .order("created_at", { ascending: false });
+
+        if (data) {
+            setAvatarHistory(data);
+        }
+
+        refreshCharacter();
+        setActiveTab("history");
     };
 
     const handleSelectFromHistory = async (historyItem: AvatarHistoryItem) => {
@@ -309,20 +331,10 @@ export default function EditAvatarPage() {
             )}
 
             {activeTab === "upload" && (
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                            <Camera className="w-4 h-4 text-primary-500" />
-                            Enviar Foto
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <AvatarUploader
-                            onAvatarUploaded={handleAvatarUploaded}
-                            onBack={() => setActiveTab("generate")}
-                        />
-                    </CardContent>
-                </Card>
+                <AvatarUploader
+                    onImageSelected={handleImageSelected}
+                    onBack={() => setActiveTab("history")}
+                />
             )}
 
             {activeTab === "history" && (
