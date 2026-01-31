@@ -122,6 +122,15 @@ export default function LoginPage() {
                             <LogIn className="w-4 h-4 mr-2" />
                             Entrar
                         </Button>
+
+                        <div className="text-center">
+                            <Link
+                                href="/forgot-password"
+                                className="font-pixel text-[10px] text-primary-400 hover:text-primary-300 transition-colors"
+                            >
+                                Esqueci minha senha
+                            </Link>
+                        </div>
                     </form>
 
                     <div className="mt-6 pt-4 border-t-2 border-black/20 text-center">
