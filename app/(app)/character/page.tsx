@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { useCharacter } from "@/hooks/use-character";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -20,6 +21,7 @@ import {
     Brain,
     LogOut,
     Trophy,
+    Pencil,
 } from "lucide-react";
 
 const LEVEL_THRESHOLDS = [
@@ -100,11 +102,19 @@ export default function CharacterPage() {
                 <CardContent className="pt-4">
                     <div className="flex flex-col items-center text-center">
                         {/* Avatar */}
-                        <AvatarDisplay
-                            character={character}
-                            size="xl"
-                            showLevel
-                        />
+                        <div className="relative">
+                            <AvatarDisplay
+                                character={character}
+                                size="xl"
+                                showLevel
+                            />
+                            <Link
+                                href="/character/edit-avatar"
+                                className="absolute -bottom-1 -right-1 w-8 h-8 bg-primary-500 border-2 border-black rounded-full flex items-center justify-center hover:bg-primary-600 transition-colors"
+                            >
+                                <Pencil className="w-4 h-4 text-white" />
+                            </Link>
+                        </div>
 
                         {/* Name & Title */}
                         <h2 className="font-pixel text-lg text-gray-900 mt-4">
