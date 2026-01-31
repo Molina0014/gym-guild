@@ -7,30 +7,48 @@ import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Swords, Shield, Sparkles, LogIn } from "lucide-react";
+import { Swords, Shield, Sparkles, UserPlus } from "lucide-react";
 
-export default function LoginPage() {
+export default function RegisterPage() {
     const router = useRouter();
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+    const [confirmPassword, setConfirmPassword] = useState("");
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const supabase = createClient();
 
-    const handleLogin = async (e: React.FormEvent) => {
+    const handleRegister = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsLoading(true);
         setError(null);
 
+        // Validate passwords match
+        if (password !== confirmPassword) {
+            setError("As senhas não coincidem");
+            setIsLoading(false);
+            return;
+        }
+
+        // Validate password length
+        if (password.length < 6) {
+            setError("A senha deve ter pelo menos 6 caracteres");
+            setIsLoading(false);
+            return;
+        }
+
         try {
-            const { data, error } = await supabase.auth.signInWithPassword({
+            const { data, error } = await supabase.auth.signUp({
                 email,
                 password,
+                options: {
+                    emailRedirectTo: `${window.location.origin}/auth/callback`,
+                },
             });
 
             if (error) {
-                if (error.message === "Invalid login credentials") {
-                    setError("Email ou senha incorretos");
+                if (error.message.includes("already registered")) {
+                    setError("Este email já está cadastrado");
                 } else {
                     setError(error.message);
                 }
@@ -38,21 +56,18 @@ export default function LoginPage() {
             }
 
             if (data.user) {
-                // Check if user has a character
-                const { data: character } = await supabase
-                    .from("characters")
-                    .select("id")
-                    .eq("user_id", data.user.id)
-                    .single();
-
-                if (character) {
-                    router.push("/home");
-                } else {
+                // If email confirmation is disabled, user is logged in immediately
+                if (data.session) {
                     router.push("/onboarding");
+                } else {
+                    // Email confirmation is required
+                    setError(
+                        "Verifique seu email para confirmar o cadastro. Depois volte e faça login.",
+                    );
                 }
             }
         } catch {
-            setError("Erro ao fazer login. Tente novamente.");
+            setError("Erro ao criar conta. Tente novamente.");
         } finally {
             setIsLoading(false);
         }
@@ -71,21 +86,21 @@ export default function LoginPage() {
                     GYM GUILD
                 </h1>
                 <p className="font-pixel text-[10px] text-gray-400">
-                    Sua jornada épica começa aqui
+                    Junte-se à guilda dos campeões
                 </p>
             </div>
 
-            {/* Login Card */}
+            {/* Register Card */}
             <Card className="w-full max-w-sm">
                 <CardHeader>
                     <CardTitle className="text-center flex items-center justify-center gap-2">
-                        <Sparkles className="w-4 h-4 text-primary-500" />
-                        Entrar na Guilda
-                        <Sparkles className="w-4 h-4 text-primary-500" />
+                        <Sparkles className="w-4 h-4 text-secondary-500" />
+                        Criar Conta
+                        <Sparkles className="w-4 h-4 text-secondary-500" />
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <form onSubmit={handleLogin} className="space-y-4">
+                    <form onSubmit={handleRegister} className="space-y-4">
                         <Input
                             type="email"
                             label="Email"
@@ -107,30 +122,47 @@ export default function LoginPage() {
                             minLength={6}
                         />
 
+                        <Input
+                            type="password"
+                            label="Confirmar Senha"
+                            placeholder="••••••••"
+                            value={confirmPassword}
+                            onChange={(e) => setConfirmPassword(e.target.value)}
+                            required
+                            disabled={isLoading}
+                            minLength={6}
+                        />
+
                         {error && (
-                            <div className="p-3 border-2 border-black font-pixel text-[10px] text-center bg-red-100 text-red-800">
+                            <div
+                                className={`p-3 border-2 border-black font-pixel text-[10px] text-center ${
+                                    error.includes("Verifique")
+                                        ? "bg-secondary-100 text-secondary-800"
+                                        : "bg-red-100 text-red-800"
+                                }`}
+                            >
                                 {error}
                             </div>
                         )}
 
                         <Button
                             type="submit"
-                            variant="primary"
+                            variant="secondary"
                             className="w-full"
                             isLoading={isLoading}
                         >
-                            <LogIn className="w-4 h-4 mr-2" />
-                            Entrar
+                            <UserPlus className="w-4 h-4 mr-2" />
+                            Criar Conta
                         </Button>
                     </form>
 
                     <div className="mt-6 pt-4 border-t-2 border-black/20 text-center">
                         <p className="font-pixel text-[10px] text-gray-400 mb-3">
-                            Ainda não tem conta?
+                            Já tem uma conta?
                         </p>
-                        <Link href="/register">
-                            <Button variant="secondary" className="w-full">
-                                Criar Conta
+                        <Link href="/login">
+                            <Button variant="ghost" className="w-full">
+                                Fazer Login
                             </Button>
                         </Link>
                     </div>
